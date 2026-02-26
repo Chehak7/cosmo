@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../core/theme.dart';
+import '../providers/cart_provider.dart';
+import '../providers/wishlist_provider.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -25,18 +28,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.product.colors != null && widget.product.colors!.isNotEmpty) {
-      _selectedColor = widget.product.colors![0];
+    if (widget.product.shades.isNotEmpty) {
+      _selectedColor = widget.product.shades[0];
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final hasDiscount = product.originalPrice != null && product.originalPrice! > product.price;
-    final discountPercent = hasDiscount 
-        ? (((product.originalPrice! - product.price) / product.originalPrice!) * 100).toInt()
-        : 0;
+    final cartProvider = Provider.of<CartProvider>(context);
+    final wishlistProvider = Provider.of<WishlistProvider>(context);
+    final isFavorite = wishlistProvider.isFavorite(product.id);
 
     return Scaffold(
       backgroundColor: CosmoTheme.creamWhite,
@@ -91,7 +93,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                               ),
                               Text(
-                                ' (${product.reviewsCount} reviews)',
+                                ' (${product.reviewCount} reviews)',
                                 style: GoogleFonts.lato(
                                   color: Colors.grey,
                                   fontSize: 12,
@@ -124,10 +126,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               color: CosmoTheme.deepCharcoal,
                             ),
                           ),
-                          if (hasDiscount) ...[
+                          if (product.discountPercent > 0) ...[
                             const SizedBox(width: 12),
                             Text(
-                              '\$${product.originalPrice!.toStringAsFixed(2)}',
+                              '\$${product.originalPrice.toStringAsFixed(2)}',
                               style: GoogleFonts.lato(
                                 decoration: TextDecoration.lineThrough,
                                 color: Colors.grey,
@@ -142,7 +144,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                '$discountPercent% OFF',
+                                '${product.discountPercent}% OFF',
                                 style: GoogleFonts.lato(
                                   color: CosmoTheme.roseGold,
                                   fontWeight: FontWeight.bold,
@@ -156,7 +158,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       const SizedBox(height: 24),
 
                       // Shade Selector
-                      if (product.colors != null) ...[
+                      if (product.shades.isNotEmpty) ...[
                         Text(
                           'Select Shade',
                           style: GoogleFonts.lato(
@@ -166,7 +168,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                         const SizedBox(height: 12),
                         Row(
-                          children: product.colors!.map((color) {
+                          children: product.shades.map((color) {
                             final isSelected = _selectedColor == color;
                             return GestureDetector(
                               onTap: () => setState(() => _selectedColor = color),
@@ -284,15 +286,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           // Custom App Bar (Overlaid)
           Positioned(
-            top: 40,
-            left: 20,
-            right: 20,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _circularIconButton(Icons.arrow_back, () => Navigator.pop(context)),
-                _circularIconButton(Icons.favorite_border, () {}),
-              ],
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _circularIconButton(Icons.arrow_back, () => Navigator.pop(context)),
+                    _circularIconButton(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      () {
+                        wishlistProvider.toggleFavorite(product);
+                      },
+                      iconColor: isFavorite ? CosmoTheme.roseGold : CosmoTheme.deepCharcoal,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
 
@@ -300,7 +314,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
@@ -311,44 +324,65 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                 ],
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: CosmoTheme.deepCharcoal),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: Text(
-                        'ADD TO CART',
-                        style: GoogleFonts.lato(
-                          fontWeight: FontWeight.bold,
-                          color: CosmoTheme.deepCharcoal,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            for (int i = 0; i < _quantity; i++) {
+                              cartProvider.addItem(product, shade: _selectedColor);
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${product.name} added to cart'),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: CosmoTheme.deepCharcoal),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: Text(
+                            'ADD TO CART',
+                            style: GoogleFonts.lato(
+                              fontWeight: FontWeight.bold,
+                              color: CosmoTheme.deepCharcoal,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: CosmoTheme.deepCharcoal,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: Text(
-                        'BUY NOW',
-                        style: GoogleFonts.lato(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            for (int i = 0; i < _quantity; i++) {
+                              cartProvider.addItem(product, shade: _selectedColor);
+                            }
+                            Navigator.of(context).pushNamed('/cart'); // Navigate to cart
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: CosmoTheme.deepCharcoal,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: Text(
+                            'BUY NOW',
+                            style: GoogleFonts.lato(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -357,7 +391,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _circularIconButton(IconData icon, VoidCallback onTap) {
+  Widget _circularIconButton(IconData icon, VoidCallback onTap, {Color? iconColor}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -366,7 +400,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           color: Colors.white.withOpacity(0.8),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: CosmoTheme.deepCharcoal, size: 24),
+        child: Icon(icon, color: iconColor ?? CosmoTheme.deepCharcoal, size: 24),
       ),
     );
   }
@@ -380,3 +414,4 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 }
+

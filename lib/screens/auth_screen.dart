@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../providers/auth_provider.dart';
 import '../main.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -59,7 +61,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   void _submit() {
     final form = _isLogin ? _loginFormKey.currentState : _signupFormKey.currentState;
     if (form!.validate()) {
-      // Logic for login/signup
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      if (_isLogin) {
+        authProvider.login(_emailController.text, _passwordController.text);
+      } else {
+        authProvider.signup(_nameController.text, _emailController.text, _passwordController.text);
+      }
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainNavigationWrapper()),
@@ -206,7 +215,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             ),
           ),
           const SizedBox(height: 20),
-          _primaryButton('LOGIN', _submit),
+          _primaryButton('SIGN IN', _submit),
         ],
       ),
     );
@@ -320,3 +329,4 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     );
   }
 }
+

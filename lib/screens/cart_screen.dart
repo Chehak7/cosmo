@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../models/cart_item.dart';
 import '../core/theme.dart';
+import '../providers/cart_provider.dart';
 import 'checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -13,49 +15,14 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  // Mock Cart Data
-  final List<CartItem> _cartItems = [
-    CartItem(
-      product: Product(
-        id: '1',
-        name: 'Aura Revival Serum',
-        brand: 'AURA BOTANICS',
-        price: 85.00,
-        originalPrice: 105.00,
-        imageUrl: 'assets/images/face_serum_product.png',
-        rating: 4.8,
-        reviewsCount: 124,
-        category: 'Skincare',
-        description: 'Luxury serum for youthful glow.',
-      ),
-      quantity: 1,
-      selectedColor: const Color(0xFFF3E5F5),
-    ),
-    CartItem(
-      product: Product(
-        id: '2',
-        name: 'Velvet Matte Lipstick',
-        brand: 'LOURÈ',
-        price: 32.00,
-        imageUrl: 'assets/images/lipstick_product.png',
-        rating: 4.5,
-        reviewsCount: 89,
-        category: 'Makeup',
-        description: 'High-pigment matte finish.',
-      ),
-      quantity: 2,
-      selectedColor: const Color(0xFFB71C1C),
-    ),
-  ];
-
   final double _deliveryFee = 10.00;
-  final double _discount = 15.00;
-
-  double get _subtotal => _cartItems.fold(0, (sum, item) => sum + (item.product.price * item.quantity));
-  double get _total => _subtotal - _discount + _deliveryFee;
+  final double _discount = 5.00;
 
   @override
   Widget build(BuildContext context) {
+    final cartProvider = Provider.of<CartProvider>(context);
+    final cartItems = cartProvider.items.values.toList();
+
     return Scaffold(
       backgroundColor: CosmoTheme.creamWhite,
       appBar: AppBar(
@@ -72,7 +39,9 @@ class _CartScreenState extends State<CartScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _cartItems.isEmpty ? _buildEmptyState() : _buildCartContent(),
+      body: SafeArea(
+        child: cartItems.isEmpty ? _buildEmptyState() : _buildCartContent(cartProvider, cartItems),
+      ),
     );
   }
 
@@ -134,25 +103,25 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCartContent() {
+  Widget _buildCartContent(CartProvider cartProvider, List<CartItem> cartItems) {
     return Column(
       children: [
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: _cartItems.length,
+            itemCount: cartItems.length,
             itemBuilder: (context, index) {
-              final item = _cartItems[index];
-              return _buildCartItem(item, index);
+              final item = cartItems[index];
+              return _buildCartItem(cartProvider, item);
             },
           ),
         ),
-        _buildOrderSummary(),
+        _buildOrderSummary(cartProvider),
       ],
     );
   }
 
-  Widget _buildCartItem(CartItem item, int index) {
+  Widget _buildCartItem(CartProvider cartProvider, CartItem item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
@@ -204,16 +173,14 @@ class _CartScreenState extends State<CartScreen> {
                     IconButton(
                       icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
                       onPressed: () {
-                        setState(() {
-                          _cartItems.removeAt(index);
-                        });
+                        cartProvider.removeItem(item.product.id);
                       },
                       constraints: const BoxConstraints(),
                       padding: EdgeInsets.zero,
                     ),
                   ],
                 ),
-                if (item.selectedColor != null)
+                if (item.selectedShade != null)
                   Row(
                     children: [
                       Text(
@@ -224,7 +191,7 @@ class _CartScreenState extends State<CartScreen> {
                         width: 12,
                         height: 12,
                         decoration: BoxDecoration(
-                          color: item.selectedColor,
+                          color: item.selectedShade,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -250,9 +217,7 @@ class _CartScreenState extends State<CartScreen> {
                       child: Row(
                         children: [
                           _qtyButton(Icons.remove, () {
-                            if (item.quantity > 1) {
-                              setState(() => item.quantity--);
-                            }
+                            cartProvider.updateQuantity(item.product.id, item.quantity - 1);
                           }),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -265,7 +230,7 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                           ),
                           _qtyButton(Icons.add, () {
-                            setState(() => item.quantity++);
+                            cartProvider.updateQuantity(item.product.id, item.quantity + 1);
                           }),
                         ],
                       ),
@@ -290,7 +255,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildOrderSummary() {
+  Widget _buildOrderSummary(CartProvider cartProvider) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -304,86 +269,83 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ],
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            // Promo Code
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 45,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: CosmoTheme.creamWhite,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Enter Promo Code',
-                        hintStyle: GoogleFonts.lato(fontSize: 14, color: Colors.grey),
-                        border: InputBorder.none,
-                      ),
-                    ),
+      child: Column(
+        children: [
+          // Promo Code
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 45,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: CosmoTheme.creamWhite,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: CosmoTheme.deepCharcoal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: Text(
-                    'APPLY',
-                    style: GoogleFonts.lato(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      color: Colors.white,
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Enter Promo Code',
+                      hintStyle: GoogleFonts.lato(fontSize: 14, color: Colors.grey),
+                      border: InputBorder.none,
                     ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // Summary Lines
-            _summaryRow('Subtotal', '\$${_subtotal.toStringAsFixed(2)}'),
-            const SizedBox(height: 8),
-            _summaryRow('Discount', '-\$${_discount.toStringAsFixed(2)}', isDiscount: true),
-            const SizedBox(height: 8),
-            _summaryRow('Delivery Fee', '\$${_deliveryFee.toStringAsFixed(2)}'),
-            const Divider(height: 24),
-            _summaryRow('Total', '\$${_total.toStringAsFixed(2)}', isTotal: true),
-            const SizedBox(height: 20),
-            // Checkout Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CheckoutScreen()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: CosmoTheme.roseGold,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Text(
-                  'PROCEED TO CHECKOUT',
-                  style: GoogleFonts.lato(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 1,
                   ),
                 ),
               ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: CosmoTheme.deepCharcoal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text(
+                  'APPLY',
+                  style: GoogleFonts.lato(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Summary Lines
+          _summaryRow('Subtotal', '\$${cartProvider.subtotal.toStringAsFixed(2)}'),
+          const SizedBox(height: 8),
+          _summaryRow('Discount', '-\$${_discount.toStringAsFixed(2)}', isDiscount: true),
+          const SizedBox(height: 8),
+          _summaryRow('Delivery Fee', '\$${_deliveryFee.toStringAsFixed(2)}'),
+          const Divider(height: 24),
+          _summaryRow('Total', '\$${(cartProvider.subtotal - _discount + _deliveryFee).toStringAsFixed(2)}', isTotal: true),
+          const SizedBox(height: 20),
+          // Checkout Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: CosmoTheme.roseGold,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(
+                'PROCEED TO CHECKOUT',
+                style: GoogleFonts.lato(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

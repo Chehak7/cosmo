@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../providers/cart_provider.dart';
 import 'order_confirmation_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -12,9 +14,13 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   int _currentStep = 0;
+  final double _shipping = 10.00;
+  final double _discount = 5.00;
 
   @override
   Widget build(BuildContext context) {
+    final cartProvider = Provider.of<CartProvider>(context);
+
     return Scaffold(
       backgroundColor: CosmoTheme.creamWhite,
       appBar: AppBar(
@@ -27,97 +33,100 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
         centerTitle: true,
       ),
-      body: Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: CosmoTheme.roseGold,
-            secondary: CosmoTheme.roseGold,
+      body: SafeArea(
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: CosmoTheme.roseGold,
+              secondary: CosmoTheme.roseGold,
+            ),
           ),
-        ),
-        child: Stepper(
-          type: StepperType.horizontal,
-          currentStep: _currentStep,
-          onStepTapped: (step) => setState(() => _currentStep = step),
-          onStepContinue: () {
-            if (_currentStep < 2) {
-              setState(() => _currentStep += 1);
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const OrderConfirmationScreen()),
-              );
-            }
-          },
-          onStepCancel: () {
-            if (_currentStep > 0) {
-              setState(() => _currentStep -= 1);
-            }
-          },
-          controlsBuilder: (context, controls) {
-            return Padding(
-              padding: const EdgeInsets.only(top: 32),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: controls.onStepContinue,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _currentStep == 2 ? CosmoTheme.roseGold : CosmoTheme.deepCharcoal,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: Text(
-                        _currentStep == 2 ? 'PLACE ORDER' : 'CONTINUE',
-                        style: GoogleFonts.lato(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (_currentStep > 0) ...[
-                    const SizedBox(width: 12),
+          child: Stepper(
+            type: StepperType.horizontal,
+            currentStep: _currentStep,
+            onStepTapped: (step) => setState(() => _currentStep = step),
+            onStepContinue: () {
+              if (_currentStep < 2) {
+                setState(() => _currentStep += 1);
+              } else {
+                cartProvider.clearCart();
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const OrderConfirmationScreen()),
+                );
+              }
+            },
+            onStepCancel: () {
+              if (_currentStep > 0) {
+                setState(() => _currentStep -= 1);
+              }
+            },
+            controlsBuilder: (context, controls) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 32),
+                child: Row(
+                  children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: controls.onStepCancel,
-                        style: OutlinedButton.styleFrom(
+                      child: ElevatedButton(
+                        onPressed: controls.onStepContinue,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _currentStep == 2 ? CosmoTheme.roseGold : CosmoTheme.deepCharcoal,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(color: CosmoTheme.deepCharcoal),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         child: Text(
-                          'BACK',
+                          _currentStep == 2 ? 'PLACE ORDER' : 'CONTINUE',
                           style: GoogleFonts.lato(
                             fontWeight: FontWeight.bold,
-                            color: CosmoTheme.deepCharcoal,
+                            color: Colors.white,
                           ),
                         ),
                       ),
                     ),
+                    if (_currentStep > 0) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: controls.onStepCancel,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: const BorderSide(color: CosmoTheme.deepCharcoal),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: Text(
+                            'BACK',
+                            style: GoogleFonts.lato(
+                              fontWeight: FontWeight.bold,
+                              color: CosmoTheme.deepCharcoal,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
+              );
+            },
+            steps: [
+              Step(
+                title: const Text('Address'),
+                isActive: _currentStep >= 0,
+                state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+                content: _buildAddressForm(),
               ),
-            );
-          },
-          steps: [
-            Step(
-              title: const Text('Address'),
-              isActive: _currentStep >= 0,
-              state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-              content: _buildAddressForm(),
-            ),
-            Step(
-              title: const Text('Payment'),
-              isActive: _currentStep >= 1,
-              state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-              content: _buildPaymentOptions(),
-            ),
-            Step(
-              title: const Text('Confirm'),
-              isActive: _currentStep >= 2,
-              content: _buildOrderSummary(),
-            ),
-          ],
+              Step(
+                title: const Text('Payment'),
+                isActive: _currentStep >= 1,
+                state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+                content: _buildPaymentOptions(),
+              ),
+              Step(
+                title: const Text('Confirm'),
+                isActive: _currentStep >= 2,
+                content: _buildOrderSummary(cartProvider),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -200,7 +209,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildOrderSummary() {
+  Widget _buildOrderSummary(CartProvider cartProvider) {
+    final subtotal = cartProvider.subtotal;
+    final total = subtotal + _shipping - _discount;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -225,13 +237,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
           const Divider(height: 32),
-          _summaryRow('Subtotal', '\$117.00'),
+          _summaryRow('Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
           const SizedBox(height: 8),
-          _summaryRow('Shipping', '\$10.00'),
+          _summaryRow('Shipping', '\$${_shipping.toStringAsFixed(2)}'),
           const SizedBox(height: 8),
-          _summaryRow('Discount', '-\$15.00'),
+          _summaryRow('Discount', '-\$${_discount.toStringAsFixed(2)}'),
           const Divider(height: 24),
-          _summaryRow('Total Amount', '\$112.00', isTotal: true),
+          _summaryRow('Total Amount', '\$${total.toStringAsFixed(2)}', isTotal: true),
         ],
       ),
     );
@@ -260,3 +272,4 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 }
+

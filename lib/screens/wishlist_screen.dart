@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../core/theme.dart';
+import '../providers/cart_provider.dart';
+import '../providers/wishlist_provider.dart';
 import 'product_detail_screen.dart';
 import 'cart_screen.dart';
 
@@ -13,36 +16,12 @@ class WishlistScreen extends StatefulWidget {
 }
 
 class _WishlistScreenState extends State<WishlistScreen> {
-  // Mock Wishlist Data
-  final List<Product> _wishlistItems = [
-    Product(
-      id: '3',
-      name: 'Midnight Bloom Parfum',
-      brand: 'ESPRIT',
-      price: 120.00,
-      originalPrice: 150.00,
-      imageUrl: 'assets/images/perfume_product.png',
-      rating: 4.9,
-      reviewsCount: 215,
-      category: 'Perfume',
-      description: 'Captivating dark floral scent.',
-    ),
-    Product(
-      id: '1',
-      name: 'Aura Revival Serum',
-      brand: 'AURA BOTANICS',
-      price: 85.00,
-      originalPrice: 105.00,
-      imageUrl: 'assets/images/face_serum_product.png',
-      rating: 4.8,
-      reviewsCount: 124,
-      category: 'Skincare',
-      description: 'Luxury serum for radiant skin.',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final wishlistProvider = Provider.of<WishlistProvider>(context);
+    final cartProvider = Provider.of<CartProvider>(context);
+    final wishlistItems = wishlistProvider.items;
+
     return Scaffold(
       backgroundColor: CosmoTheme.creamWhite,
       appBar: AppBar(
@@ -56,9 +35,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Badge(
-              label: Text('2'),
-              child: Icon(Icons.shopping_bag_outlined),
+            icon: Badge(
+              label: Text('${cartProvider.itemCount}'),
+              child: const Icon(Icons.shopping_bag_outlined),
             ),
             onPressed: () {
               Navigator.push(
@@ -67,9 +46,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
               );
             },
           ),
-          if (_wishlistItems.isNotEmpty)
+          if (wishlistItems.isNotEmpty)
             TextButton(
               onPressed: () {
+                for (var item in wishlistItems) {
+                  cartProvider.addItem(item);
+                }
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('All items added to cart!')),
                 );
@@ -86,7 +68,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: _wishlistItems.isEmpty ? _buildEmptyState() : _buildWishlistGrid(),
+      body: SafeArea(
+        child: wishlistItems.isEmpty ? _buildEmptyState() : _buildWishlistGrid(wishlistProvider, cartProvider),
+      ),
     );
   }
 
@@ -119,7 +103,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
     );
   }
 
-  Widget _buildWishlistGrid() {
+  Widget _buildWishlistGrid(WishlistProvider wishlistProvider, CartProvider cartProvider) {
+    final wishlistItems = wishlistProvider.items;
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -128,9 +113,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
         crossAxisSpacing: 16,
         childAspectRatio: 0.65,
       ),
-      itemCount: _wishlistItems.length,
+      itemCount: wishlistItems.length,
       itemBuilder: (context, index) {
-        final product = _wishlistItems[index];
+        final product = wishlistItems[index];
         return GestureDetector(
           onTap: () {
             Navigator.push(
@@ -180,9 +165,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                         right: 8,
                         child: GestureDetector(
                           onTap: () {
-                            setState(() {
-                              _wishlistItems.removeAt(index);
-                            });
+                            wishlistProvider.toggleFavorite(product);
                           },
                           child: Container(
                             padding: const EdgeInsets.all(4),
@@ -235,16 +218,27 @@ class _WishlistScreenState extends State<WishlistScreen> {
                               ),
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: CosmoTheme.deepCharcoal,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.add_shopping_cart,
-                              color: Colors.white,
-                              size: 14,
+                          GestureDetector(
+                            onTap: () {
+                              cartProvider.addItem(product);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('${product.name} added to cart'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: CosmoTheme.deepCharcoal,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.add_shopping_cart,
+                                color: Colors.white,
+                                size: 14,
+                              ),
                             ),
                           ),
                         ],
@@ -260,3 +254,4 @@ class _WishlistScreenState extends State<WishlistScreen> {
     );
   }
 }
+
