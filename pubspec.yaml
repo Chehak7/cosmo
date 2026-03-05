@@ -62,6 +62,12 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+    - assets/images/category_skincare.png
+    - assets/images/category_makeup.png
+    - assets/images/category_perfume.png
+    - assets/images/category_haircare.png
+    - assets/images/category_lipcare.png
+    - assets/images/hydra_gel_product.png
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

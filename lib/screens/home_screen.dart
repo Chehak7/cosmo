@@ -18,11 +18,11 @@ class HomeScreen extends StatelessWidget {
   ];
 
   final List<Category> categories = [
-    Category(name: 'Skincare', icon: '✨'),
-    Category(name: 'Makeup', icon: '💄'),
-    Category(name: 'Perfume', icon: '🌸'),
-    Category(name: 'Haircare', icon: '💇‍♀️'),
-    Category(name: 'Lip Care', icon: '👄'),
+    Category(name: 'Skincare', icon: 'assets/images/category_skincare.png'),
+    Category(name: 'Makeup', icon: 'assets/images/category_makeup.png'),
+    Category(name: 'Perfume', icon: 'assets/images/category_perfume.png'),
+    Category(name: 'Haircare', icon: 'assets/images/category_haircare.png'),
+    Category(name: 'Lip Care', icon: 'assets/images/category_lipcare.png'),
   ];
 
   @override
@@ -150,10 +150,10 @@ class HomeScreen extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                                  alignment: Alignment.center,
-                                  child: Text(
+                                  child: Image.asset(
                                     categories[index].icon,
-                                    style: const TextStyle(fontSize: 24),
+                                    width: 32,
+                                    height: 32,
                                   ),
                                 ),
                                 const SizedBox(height: 8),

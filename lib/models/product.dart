@@ -65,7 +65,7 @@ final List<Product> dummyProducts = [
     category: 'Skincare',
     price: 32.00,
     discountPercent: 15,
-    imageUrl: 'assets/images/face_serum_product.png',
+    imageUrl: 'assets/images/hydra_gel_product.png',
     rating: 4.9,
     reviewCount: 2100,
     shades: [],

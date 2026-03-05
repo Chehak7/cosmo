@@ -5,7 +5,7 @@ import '../core/theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
 import 'cart_screen.dart';
-import 'auth_screen.dart';
+import 'splash_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -56,34 +56,6 @@ class ProfileScreen extends StatelessWidget {
               Center(
                 child: Column(
                   children: [
-                    Stack(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: CosmoTheme.roseGold,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const CircleAvatar(
-                            radius: 50,
-                            backgroundImage: NetworkImage('https://i.pravatar.cc/300'),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: CosmoTheme.deepCharcoal,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
                     Text(
                       userName,
                       style: GoogleFonts.playfairDisplay(
@@ -171,7 +143,7 @@ class ProfileScreen extends StatelessWidget {
               authProvider.logout();
               Navigator.pop(ctx);
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const AuthScreen()),
+                MaterialPageRoute(builder: (context) => const SplashScreen()),
                 (route) => false,
               );
             },
